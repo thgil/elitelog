@@ -1,12 +1,14 @@
 <!doctype html>
-<html>
+<html ng-app="eliteApp">
 	<head>
 		<meta charset="utf-8">
 		<title>Elite Log Searcher</title>
 		<link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
 		<link rel="stylesheet" href="index.css">
+		<script src="node_modules/angular/angular.js"></script>
+		<script src="controller.js"></script>
 	</head>
-	<body>
+	<body ng-controller="eliteCtrl">
 		<nav class="navbar navbar-default navbar-fixed-top">
 			<div class="container-fluid">
 				<!-- Brand and toggle get grouped for better mobile display -->
@@ -16,190 +18,61 @@
 
 				<!-- Collect the nav links, forms, and other content for toggling -->
 				<div class="collapse navbar-collapse ">
-					<form class="navbar-form navbar-right" role="search" onsubmit="return search()">
+					<form name="search" class="navbar-form navbar-right" role="search">
 						<div class="form-group">
-							<input type="text" class="form-control" placeholder="Directory" id="dir">
+							<input type="text" class="form-control" placeholder="Directory" ng-model="dir">
 						</div>
-						<div class="form-group">
-							<input type="text" class="form-control" placeholder="Search" id="name">
-						</div>
-						<button type="submit" class="btn btn-default">Submit</button>
+						<button ng-click="updateDir(dir)" class="btn btn-default">Load logs</button>
 					</form>
 				</div><!-- /.navbar-collapse -->
 			</div><!-- /.container-fluid -->
 		</nav>
 		<div class="container-fluid">
 			<section>
-				<div class="empty">
-					<p>
-						Please enter a <strong>unique</strong> username.
-					</p>
-				</div>
+				<p ng-hide="loaded">
+					Please enter a <strong>unique</strong> username.
+				</p>
+				<form name="form" class="form-inline" ng-show="loaded" novalidate >
+				  <div class="form-group">
+				    <label for="uName">Username</label>
+				    <input type="text" class="form-control" id="uName" ng-model="username"/>
+				  </div>
+				  <button type="submit" ng-click="searchLogs(username)" class="btn btn-default">Search</button>
+				</form>
 				<table class="table table-striped table-hover" id="table">
 					<thead>
 						<tr>
-							<th onClick="return sortBy('date')" id="date">Date</th>
-							<th onClick="sortBy('logid')" id="logid">LogID</th>
+							<th ng-click="order('[0]')" id="date">Date<span class="sortorder" ng-show="predicate === '[0]'" ng-class="{reverse:reverse}"></span></th>
+							<th ng-click="order('[1]')" id="logid">LogID<span class="sortorder" ng-show="predicate === '[1]'" ng-class="{reverse:reverse}"></span></th>
 							<th colspan="2">Char/Account ID</th>
 							<th colspan="2"></th>
 							<th colspan="3">Location</th>
 							<th colspan="5"></th>
-							<th onClick="sortBy('itemid')" id="itemid">ItemId</th>
-							<th onClick="sortBy('itemtype')" id="itemtype">ItemType</th>
-							<th colspan="6"></th>
-							<th onClick="sortBy('charname')" id="charname">CharName</th>
-							<th onClick="sortBy('accountname')" id="accountname">AccountName</th>
 							<th></th>
 							<th></th>
 							<th></th>
+							<th></th>
+							<th ng-click="order('[18]')" id="itemid">ItemID<span class="sortorder" ng-show="predicate === '[18]'" ng-class="{reverse:reverse}"></span></th>
+							<th ng-click="order('[19]')" id="itemtype">ItemType<span class="sortorder" ng-show="predicate === '[19]'" ng-class="{reverse:reverse}"></span></th>
+							<th></th>
+							<th></th>
+							<th ng-click="order('[22]')" id="charname">CharName<span class="sortorder" ng-show="predicate === '[22]'" ng-class="{reverse:reverse}"></span></th>
+							<th ng-click="order('[23]')" id="accountname">AccountName<span class="sortorder" ng-show="predicate === '[23]'" ng-class="{reverse:reverse}"></span></th>
+							<th></th>
+							<th></th>
+							<th ng-click="order('[26]')">ItemID<span class="sortorder" ng-show="predicate === '[26]'" ng-class="{reverse:reverse}"></span></th>
 						</tr>
 					</thead>
 					<tbody>
+						<tr ng-repeat="entry in log | orderBy:predicate:reverse">
+							<td ng-repeat="d in entry track by $index">
+								<div ng-click="searchLogs(d)">{{d}}</div>
+							</td>
+						</tr>
 					</tbody>
 				</table>
 			</section>
 			<footer></footer>
 		</div>
-		<script>
-			var remote = require('remote');
-			var jet = require('fs-jetpack');
-			var moment = require('moment');
-			var readline = require('readline');
-			var parse = require('csv-parse');
-			var $ = require('jquery')
-
-			document.getElementById("dir").value = jet.read('dir');
-
-			var lines = [];
-
-			var search = function() {
-				var name = document.getElementById("name").value;
-				var dir = document.getElementById("dir").value;
-
-				lines = []					// clear lines
-				$("tbody").empty(); // clear table
-
-				if(dir[dir.length-1]!='/') dir = dir+'/';
-				jet.write('dir', dir);
-
-				if(name.length<3) {
-					$( ".empty" ).show()
-					return false;
-				} else {
-					$( ".empty" ).hide()
-				};
-
-				jet.list(dir).forEach(function(file, index, array) {
-					if(jet.exists(dir+file)!="file") return false;
-					var rd = readline.createInterface({
-						input: jet.createReadStream(dir+file),
-						output: process.stdout,
-						terminal: false
-					});
-
-					rd.on('line', function(line) {
-						if(line.indexOf(name) > -1) {
-							parse(line, function(err, out) {
-								lines.push(out[0]);
-							});
-						}
-					});
-					if(index==array.length-1) {
-						rd.on('close', function() {
-							lines.sort(function(a,b) {
-								var d1 = new Date(a[0]);
-								var d2 = new Date(b[0]);
-
-								if(d1<d2) return 1;
-								if(d1>d2) return -1;
-								return 0;
-							});
-							lines.forEach(function(line, index) {
-								line[0] = moment(new Date(line[0])).format("DD/MM/YYYY, h:mm:ss A"); // format time
-								if(line[1].charAt(0) === ' ') line[1] = line[1].substr(1); // Remove space
-								var cols = [];
-								line.forEach(function(value) {
-									cols.push("<td>"+value+"</td>");
-								});
-
-								$( "tbody" ).append( '<tr id="row">'+cols+'</tr>' );
-							});
-						});
-					}
-				});
-
-				return false;
-			};
-
-			var sort = '';
-			var up = -1;
-
-			var sortBy = function(by) {
-
-				$("tbody").empty();
-				switch(by) {
-					case 'date':
-						if(sort==='date') up*=-1;
-						else up = 1;
-						lines.sort(function(a,b) {
-							a = new Date(a[0]); b = new Date(b[0]);
-
-							if(a<b) return up*1;
-							if(a>b) return up*-1;
-							return 0;
-						});
-						fillTable(lines);
-						break;
-					case 'logid':
-						if(sort==='logid') up*=-1;
-						else up = 1;
-						lines.sort(function(a,b) {
-							a = a[1]; b = b[1];
-
-							if(a<b) return up*1;
-							if(a>b) return up*-1;
-							return 0;
-						});
-						fillTable(lines);
-						break;
-					case 'itemid':
-						if(sort==='itemid') up*=-1;
-						else up = 1;
-						lines.sort(function(a,b) {
-							a = a[1]; b = b[1];
-
-							if(a<b) return up*1;
-							if(a>b) return up*-1;
-							return 0;
-						});
-						fillTable(lines);
-						break;
-					case 'itemtype':
-						if(sort==='itemtype') up*=-1;
-						else up = 1;
-						lines.sort(function(a,b) {
-							a = a[1]; b = b[1];
-
-							if(a<b) return up*1;
-							if(a>b) return up*-1;
-							return 0;
-						});
-						fillTable(lines);
-						break;
-				};
-				sort = by;
-			};
-
-			var fillTable = function(lines) {
-				lines.forEach(function(line, index) {
-					var cols = [];
-					line.forEach(function(value) {
-						cols.push("<td>"+value+"</td>");
-					});
-					$("tbody").append( '<tr id="row">'+cols+'</tr>' );
-				});
-			};
-
-		</script>
 	</body>
 </html>

@@ -5,3 +5,10 @@ body { padding-top: 70px; }
      margin-left: auto;
      margin-right: auto;
 }
+
+.sortorder:after {
+    content: '\25b2';
+  }
+.sortorder.reverse:after {
+  content: '\25bc';
+}
