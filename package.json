@@ -1,8 +1,8 @@
 {
   "name": "elitelog",
-  "productName": "Elite Log Searcher",
+  "productName": "elitelog",
   "version": "0.0.0",
-  "description": "Elite Log Searcher",
+  "description": "elitelog",
   "license": "MIT",
   "main": "index.js",
   "repository": "thgil/elitelog",
