@@ -1,6 +1,6 @@
 # elitelog
 
-> My supreme app
+Testing electron
 
 
 ## Dev
